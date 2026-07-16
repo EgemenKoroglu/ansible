@@ -97,14 +97,16 @@
                         <tbody>
                         {% for result in host_data.get('Results', []) %}
                             {% for vuln in result.get('Vulnerabilities', []) %}
-                                {% if vuln.FixedVersion %}
+                                <!-- Eski "if vuln.FixedVersion" yerine güvenli .get() metodunu kullanıyoruz -->
+                                {% if vuln.get('FixedVersion') %}
                                     {% set has_vuln = true %}
                                     <tr>
                                         <td><strong>{{ vuln.VulnerabilityID }}</strong></td>
                                         <td>{{ vuln.PkgName }}</td>
                                         <td class="severity-{{ vuln.Severity }}">{{ vuln.Severity }}</td>
                                         <td>{{ vuln.InstalledVersion }}</td>
-                                        <td>{{ vuln.FixedVersion }}</td>
+                                        <!-- Yazdırırken de aynı şekilde .get() kullanıyoruz -->
+                                        <td>{{ vuln.get('FixedVersion') }}</td>
                                     </tr>
                                 {% endif %}
                             {% endfor %}
