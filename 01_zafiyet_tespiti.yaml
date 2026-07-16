@@ -1,0 +1,24 @@
+---
+- name: Job Template 1 - Zafiyet Taraması ve Raporlama
+  hosts: all
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Trivy ile tara ve yaması olan (FixedVersion) paketleri tespit et
+      shell: |
+        trivy fs / --scanners vuln --format json -q | \
+        jq -r '.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | .PkgName' | \
+        sort -u
+      register: vulnerable_packages
+      ignore_errors: yes
+
+    - name: Analiz Raporunu Ekrana Yazdır
+      debug:
+        msg: |
+          ==================================================
+          Sunucu: {{ inventory_hostname }}
+          Bulunan Zafiyetli ve Yaması Hazır Paket Sayısı: {{ vulnerable_packages.stdout_lines | length }}
+          ==================================================
+          Paket Listesi:
+          {{ vulnerable_packages.stdout_lines | join(', ') | default('Sistem tamamen güncel ve temiz.', true) }}
+          ==================================================
