@@ -1,6 +1,6 @@
 ---
 - name: Job Template 2 - Sunucu Envanter ve Donanım Tespiti
-  hosts: hedef_sunucular
+  hosts: all
   gather_facts: yes # Ansible'ın sunucu bilgilerini otomatik çekmesini sağlar
   become: yes
   tasks:
