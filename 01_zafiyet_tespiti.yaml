@@ -1,6 +1,6 @@
 ---
 - name: Job Template 1 - Zafiyet Taraması ve Detaylı Konsol Raporu
-  hosts: hedef_sunucular
+  hosts: all
   become: yes
   tasks:
     - name: JSON işlemek için jq aracını kur
