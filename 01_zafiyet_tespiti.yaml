@@ -3,6 +3,34 @@
   hosts: all
   become: yes
   tasks:
-    - name: Trivy Zafiyet Tablosu
-      shell: trivy fs / --scanners vuln --no-progress
+    - name: JSON işlemek için jq aracını kur
+      apt:
+        name: jq
+        state: present
+        update_cache: yes
+
+    - name: Trivy Tarama ve Temiz Metin Raporu Oluşturma
+      shell: |
+        # 1. Tüm zafiyetleri JSON olarak tara ve kaydet
+        trivy fs / --scanners vuln --format json -q > /tmp/trivy.json
+        
+        # 2. Dümdüz, parantezsiz ve tertemiz bir metin raporu inşa et
+        echo "=========================================================" > /tmp/rapor.txt
+        echo "Sunucu: {{ inventory_hostname }}" >> /tmp/rapor.txt
+        
+        # Sadece Yaması Hazır (Kapatılabilir) Açıkları Say
+        TOPLAM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null)] | length' /tmp/trivy.json)
+        echo "Toplam Kapatılabilir (Yaması Hazır) Açık Sayısı: $TOPLAM" >> /tmp/rapor.txt
+        echo "---------------------------------------------------------" >> /tmp/rapor.txt
+        
+        if [ "$TOPLAM" -gt "0" ]; then
+            echo "KRİTİK ve YÜKSEK (CRITICAL/HIGH) Seviye İlk 50 Paket Özeti:" >> /tmp/rapor.txt
+            jq -r '.Results[]?.Vulnerabilities[]? | select((.Severity == "CRITICAL" or .Severity == "HIGH") and .FixedVersion != null) | "[\(.Severity)] \(.PkgName) | Sürüm: \(.InstalledVersion) -> \(.FixedVersion)"' /tmp/trivy.json | sort -u | head -n 50 >> /tmp/rapor.txt
+        else
+            echo "Harika! Sistem temiz, acil yama bekleyen paket yok." >> /tmp/rapor.txt
+        fi
+        echo "=========================================================" >> /tmp/rapor.txt
       ignore_errors: yes
+
+    - name: Zafiyet Raporunu Görüntüle (Stdout Ekranına Tıkla)
+      command: cat /tmp/rapor.txt
