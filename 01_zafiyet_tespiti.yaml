@@ -1,5 +1,8 @@
 ---
-- name: Job Template 1 - Zafiyet Taraması ve Detaylı HTML Raporu Üretimi
+# ====================================================================
+# AŞAMA 1: Tüm sunucuları tara ve verileri toplayıp HTML raporu üret
+# ====================================================================
+- name: Aşama 1 - Zafiyet Taraması ve HTML Üretimi
   hosts: all
   become: yes
   tasks:
@@ -7,16 +10,63 @@
       command: trivy fs / --scanners vuln --format json -q --output /tmp/trivy-report.json
       ignore_errors: yes
 
-    - name: Her sunucunun JSON raporunu AWX/Kontrol Makinesine çek
+    - name: Her sunucunun JSON raporunu AWX konteynerine çek
       fetch:
         src: /tmp/trivy-report.json
         dest: "/tmp/trivy_reports/{{ inventory_hostname }}.json"
         flat: yes
 
-    - name: Tüm verileri birleştirip Detaylı HTML Raporunu Oluştur
+    - name: Tüm verileri birleştirip Detaylı HTML Raporunu AWX üzerinde oluştur
       template:
         src: rapor_sablonu.j2
         dest: /tmp/trivy_reports/Guncel_Zafiyet_Raporu.html
       delegate_to: localhost
       run_once: true
-      become: no # <-- AWX konteynerinde sudo olmadığı için işlemi normal kullanıcıyla yapıyoruz
+      become: no # AWX konteynerinde sudo hatası almamak için critical!
+
+# ====================================================================
+# AŞAMA 2: Raporu AWX Ana Makinesinde (8081 Portunda) Yayınla
+# ====================================================================
+- name: Aşama 2 - AWX Host Üzerinde Nginx Kurulumu ve 8081 Portu Yapılandırması
+  hosts: 172.30.11.11 # <-- AWX'in kurulu olduğu ana makinenin IP adresi
+  become: yes
+  tasks:
+    - name: (AWX Host) Nginx Web Sunucusunu kur
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: (AWX Host) Nginx'i 8081 portundan yayın yapacak şekilde ayarla
+      copy:
+        content: |
+          server {
+              listen 8081 default_server;
+              listen [::]:8081 default_server;
+              root /var/www/html;
+              index index.html index.htm;
+              server_name _;
+              location / {
+                  try_files $uri $uri/ =404;
+              }
+          }
+        dest: /etc/nginx/sites-available/default
+      notify: Restart Nginx
+
+    - name: (AWX Host) Nginx servisinin çalıştığından ve aktif olduğundan emin ol
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: (AWX Host) HTML Raporunu Nginx dizinine kopyala
+      copy:
+        src: /tmp/trivy_reports/Guncel_Zafiyet_Raporu.html
+        dest: /var/www/html/index.html # index.html yaptık ki direkt portu yazınca açılsın
+        mode: '0644'
+
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
