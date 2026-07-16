@@ -1,0 +1,18 @@
+---
+- name: Job Template 2 - Sunucu Envanter ve Donanım Tespiti
+  hosts: hedef_sunucular
+  gather_facts: yes # Ansible'ın sunucu bilgilerini otomatik çekmesini sağlar
+  become: yes
+  tasks:
+    - name: Sunucu Bilgilerini AWX Ekranına Bas
+      debug:
+        msg: "{{ sistem_bilgisi.split('\n') }}"
+      vars:
+        sistem_bilgisi: |
+          =========================================================
+          Sunucu (IP/Hostname): {{ inventory_hostname }}
+          İşletim Sistemi: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel Sürümü: {{ ansible_kernel }}
+          CPU Çekirdek Sayısı: {{ ansible_processor_vcpus }}
+          Toplam RAM: {{ (ansible_memtotal_mb / 1024) | round(2) }} GB
+          =========================================================
