@@ -1,24 +1,21 @@
 ---
-- name: Job Template 1 - Zafiyet Taraması ve Raporlama
+- name: Job Template 1 - Zafiyet Taraması ve Detaylı HTML Raporu Üretimi
   hosts: all
   become: yes
-  gather_facts: no
   tasks:
-    - name: Trivy ile tara ve yaması olan (FixedVersion) paketleri tespit et
-      shell: |
-        trivy fs / --scanners vuln --format json -q | \
-        jq -r '.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | .PkgName' | \
-        sort -u
-      register: vulnerable_packages
+    - name: Trivy ile detaylı tarama yap ve JSON olarak kaydet
+      command: trivy fs / --scanners vuln --format json -q --output /tmp/trivy-report.json
       ignore_errors: yes
 
-    - name: Analiz Raporunu Ekrana Yazdır
-      debug:
-        msg: |
-          ==================================================
-          Sunucu: {{ inventory_hostname }}
-          Bulunan Zafiyetli ve Yaması Hazır Paket Sayısı: {{ vulnerable_packages.stdout_lines | length }}
-          ==================================================
-          Paket Listesi:
-          {{ vulnerable_packages.stdout_lines | join(', ') | default('Sistem tamamen güncel ve temiz.', true) }}
-          ==================================================
+    - name: Her sunucunun JSON raporunu AWX/Kontrol Makinesine çek
+      fetch:
+        src: /tmp/trivy-report.json
+        dest: "/tmp/trivy_reports/{{ inventory_hostname }}.json"
+        flat: yes
+
+    - name: Tüm verileri birleştirip Detaylı HTML Raporunu Oluştur
+      template:
+        src: rapor_sablonu.j2
+        dest: /tmp/trivy_reports/Guncel_Zafiyet_Raporu.html
+      delegate_to: localhost
+      run_once: true # Bu adım sadece bir kere, tüm sunucuların verisi geldikten sonra çalışır.
