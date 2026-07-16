@@ -24,8 +24,8 @@
         echo "---------------------------------------------------------" >> /tmp/rapor.txt
         
         if [ "$TOPLAM" -gt "0" ]; then
-            echo "KRİTİK ve YÜKSEK (CRITICAL/HIGH) Seviye İlk 50 Zafiyet:" >> /tmp/rapor.txt
-            jq -r '.Results[]?.Vulnerabilities[]? | select((.Severity == "CRITICAL" or .Severity == "HIGH") and .FixedVersion != null) | "[\(.Severity)] \(.VulnerabilityID) | Paket: \(.PkgName) | Sürüm: \(.InstalledVersion) -> \(.FixedVersion)"' /tmp/trivy.json | sort -u | head -n 50 >> /tmp/rapor.txt
+            echo "KRİTİK ve YÜKSEK (CRITICAL/HIGH) Seviye İlk 50 Benzersiz Zafiyet:" >> /tmp/rapor.txt
+            jq -r '[.Results[]?.Vulnerabilities[]? | select((.Severity == "CRITICAL" or .Severity == "HIGH") and .FixedVersion != null)] | unique_by(.VulnerabilityID) | .[] | "[\(.Severity)] \(.VulnerabilityID) | Paket: \(.PkgName) | Sürüm: \(.InstalledVersion) -> \(.FixedVersion)"' /tmp/trivy.json | sort -u | head -n 50 >> /tmp/rapor.txt
         else
             echo "Harika! Sistem temiz, acil yama bekleyen paket yok." >> /tmp/rapor.txt
         fi
