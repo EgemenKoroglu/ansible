@@ -4,5 +4,5 @@
   become: yes
   tasks:
     - name: Trivy Zafiyet Tablosu
-      shell: trivy fs / --scanners vuln --ignore-unfixed --no-progress
+      shell: trivy fs / --scanners vuln --no-progress
       ignore_errors: yes
