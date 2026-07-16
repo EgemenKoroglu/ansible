@@ -1,0 +1,67 @@
+---
+- name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
+  hosts: all
+  become: yes
+  gather_facts: yes
+  tasks:
+    # ==========================================
+    # DEBIAN & UBUNTU AİLESİ
+    # ==========================================
+    - name: (Debian/Ubuntu) Temel bağımlılıkları kur
+      apt:
+        name:
+          - wget
+          - apt-transport-https
+          - gnupg
+          - jq
+          - needrestart
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Trivy GPG anahtarını ekle
+      apt_key:
+        url: https://aquasecurity.github.io/trivy-repo/deb/public.key
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Dinamik Trivy reposunu ekle
+      apt_repository:
+        repo: "deb https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
+        state: present
+        filename: trivy
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Trivy'yi kur
+      apt:
+        name: trivy
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    # ==========================================
+    # REDHAT, CENTOS & ROCKY AİLESİ
+    # ==========================================
+    - name: (RedHat/CentOS) Temel bağımlılıkları kur
+      yum:
+        name:
+          - wget
+          - jq
+          - yum-utils
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: (RedHat/CentOS) Trivy reposunu ekle
+      yum_repository:
+        name: trivy
+        description: Trivy Repository
+        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$releasever/$basearch/
+        enabled: yes
+        gpgcheck: no
+      when: ansible_os_family == "RedHat"
+
+    - name: (RedHat/CentOS) Trivy'yi kur
+      yum:
+        name: trivy
+        state: present
+      when: ansible_os_family == "RedHat"
