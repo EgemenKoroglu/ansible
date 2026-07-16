@@ -18,4 +18,5 @@
         src: rapor_sablonu.j2
         dest: /tmp/trivy_reports/Guncel_Zafiyet_Raporu.html
       delegate_to: localhost
-      run_once: true # Bu adım sadece bir kere, tüm sunucuların verisi geldikten sonra çalışır.
+      run_once: true
+      become: no # <-- AWX konteynerinde sudo olmadığı için işlemi normal kullanıcıyla yapıyoruz
