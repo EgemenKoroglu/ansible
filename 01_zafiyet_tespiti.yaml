@@ -19,7 +19,9 @@
 
     - name: Rapor - Sunucu Bazlı Detaylı Zafiyet Listesi
       debug:
-        msg: |
+        msg: "{{ rapor_metni.split('\n') }}"
+      vars:
+        rapor_metni: |
           =========================================================
           Sunucu: {{ inventory_hostname }}
           Bulunan ve Yamalanabilir Açık Sayısı: {{ vulnerable_packages.stdout_lines | length }}
