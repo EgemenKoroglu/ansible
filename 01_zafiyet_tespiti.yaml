@@ -1,6 +1,6 @@
 ---
 - name: Job Template 1 - Zafiyet Taraması
-  hosts: hedef_sunucular
+  hosts: all
   become: yes
   tasks:
     - name: Trivy Zafiyet Tablosu
