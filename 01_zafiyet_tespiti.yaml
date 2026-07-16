@@ -1,30 +1,8 @@
 ---
-- name: Job Template 1 - Zafiyet Taraması ve Detaylı Konsol Raporu
-  hosts: all
+- name: Job Template 1 - Zafiyet Taraması
+  hosts: hedef_sunucular
   become: yes
   tasks:
-    - name: JSON işlemek için jq aracını kur
-      apt:
-        name: jq
-        state: present
-        update_cache: yes
-
-    - name: Trivy ile tara ve zafiyet detaylarını (CVE, Paket, Sürüm) filtrele
-      shell: |
-        trivy fs / --scanners vuln --format json -q --no-progress | \
-        jq -r '.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | "[\(.Severity)] \(.VulnerabilityID) | Paket: \(.PkgName) | Sürüm: \(.InstalledVersion) -> \(.FixedVersion)"' | \
-        sort -u
-      register: vulnerable_packages
+    - name: Trivy Zafiyet Tablosu
+      shell: trivy fs / --scanners vuln --ignore-unfixed --no-progress
       ignore_errors: yes
-
-    - name: Rapor - Sunucu Bazlı Detaylı Zafiyet Listesi
-      debug:
-        msg: "{{ rapor_metni.split('\n') }}"
-      vars:
-        rapor_metni: |
-          =========================================================
-          Sunucu: {{ inventory_hostname }}
-          Bulunan ve Yamalanabilir Açık Sayısı: {{ vulnerable_packages.stdout_lines | length }}
-          ---------------------------------------------------------
-          {{ vulnerable_packages.stdout_lines | join('\n') | default('Harika! Sistem temiz.', true) }}
-          =========================================================
