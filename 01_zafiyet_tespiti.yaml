@@ -1,39 +1,25 @@
 ---
-- name: Trivy OS Taraması ve Nginx Raporlama
+- name: OpenSCAP Akıllı Zafiyet Taraması ve Nginx Raporlama
   hosts: hedef_sunucular
-  gather_facts: no
   become: yes
-  vars:
-    ansible_become_timeout: 45
   tasks:
-    - name: Trivy HTML şablonunu hedef sunucuya indir
+    - name: OpenSCAP aracını sunucuya kur
+      apt:
+        name: libopenscap8
+        state: present
+
+    - name: Ubuntu'nun günlük resmi OVAL (Zafiyet Veritabanı) dosyasını indir
       get_url:
-        url: https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
-        dest: /tmp/html.tpl
-        validate_certs: no
+        url: "https://security-metadata.canonical.com/oval/com.ubuntu.{{ ansible_distribution_release }}.cve.oval.xml"
+        dest: /tmp/ubuntu_cve.xml
 
-    - name: Zafiyetleri tara (Sadece OS) ve HTML rapor oluştur
-      shell: trivy rootfs / --vuln-type os --scanners vuln --severity HIGH,CRITICAL --format template --template "@/tmp/html.tpl" -o /tmp/{{ inventory_hostname }}_zafiyet.html
+    - name: Canlı sistemi tara ve HTML rapor oluştur (Sadece aktif çalışanlar)
+      shell: oscap oval eval --report /tmp/{{ inventory_hostname }}_scap_raporu.html /tmp/ubuntu_cve.xml
+      ignore_errors: yes # OpenSCAP açık bulduğunda hata kodu döner, süreci kesmemesi için ekliyoruz
 
-    - name: Raporu AWX izole ortamına çek
-      fetch:
-        src: /tmp/{{ inventory_hostname }}_zafiyet.html
-        dest: /tmp/{{ inventory_hostname }}_zafiyet.html
-        flat: yes
-
-    - name: Çekilen raporu anında Nginx yayın dizinine fırlat
+    - name: Raporu AWX üzerinden Nginx yayın dizinine fırlat
       copy:
-        src: /tmp/{{ inventory_hostname }}_zafiyet.html
-        dest: /var/www/html/raporlar/{{ inventory_hostname }}_zafiyet.html
+        src: /tmp/{{ inventory_hostname }}_scap_raporu.html
+        dest: /var/www/html/raporlar/{{ inventory_hostname }}_scap_raporu.html
       delegate_to: 172.30.11.11
       become: no
-      vars:
-        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
-
-    - name: Hedef sunucudaki geçici dosyaları temizle
-      file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /tmp/html.tpl
-        - /tmp/{{ inventory_hostname }}_zafiyet.html
