@@ -1,7 +1,10 @@
 ---
 - name: 1. Aşama - Hedefleri Tara ve Raporları Topla
   hosts: hedef_sunucular
+  gather_facts: no
   become: yes
+  vars:
+    ansible_become_timeout: 45
   tasks:
     - name: Trivy HTML şablonunu hedef sunucuya indir
       get_url:
@@ -28,8 +31,11 @@
         - /tmp/{{ inventory_hostname }}_zafiyet.html
 
 - name: 2. Aşama - Raporları Nginx Yayın Dizinine Aktar
-  hosts: ana_sunucu
+  hosts: rapor_sunucusu
+  gather_facts: no
   become: yes
+  vars:
+    ansible_become_timeout: 45
   tasks:
     - name: Raporları Nginx ana dizinine yaz
       copy:
