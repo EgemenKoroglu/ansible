@@ -28,7 +28,7 @@
         - /tmp/{{ inventory_hostname }}_zafiyet.html
 
 - name: 2. Aşama - Raporları Nginx Yayın Dizinine Aktar
-  hosts: rapor_sunucusu
+  hosts: ana_sunucu
   become: yes
   tasks:
     - name: Raporları Nginx ana dizinine yaz
