@@ -1,5 +1,5 @@
 ---
-- name: 1. Aşama - Hedefleri Tara ve Raporları Topla
+- name: Trivy Tarama ve Nginx Raporlama (Tek Aşama)
   hosts: hedef_sunucular
   gather_facts: no
   become: yes
@@ -14,30 +14,23 @@
 
     - name: Zafiyetleri tara ve HTML rapor oluştur
       shell: trivy fs / --scanners vuln --format template --template "@/tmp/html.tpl" -o /tmp/{{ inventory_hostname }}_zafiyet.html
-      ignore_errors: yes
 
     - name: Raporu AWX izole ortamına çek
       fetch:
         src: /tmp/{{ inventory_hostname }}_zafiyet.html
-        dest: /tmp/merkezi_raporlar/
+        dest: /tmp/{{ inventory_hostname }}_zafiyet.html
         flat: yes
 
-    - name: Hedef sunucudaki geçici dosyaları temizle
+    - name: Çekilen raporu anında Nginx yayın dizinine fırlat
+      copy:
+        src: /tmp/{{ inventory_hostname }}_zafiyet.html
+        dest: /var/www/html/raporlar/{{ inventory_hostname }}_zafiyet.html
+      delegate_to: 172.30.11.11
+
+    - name: Hedef sunucudaki geçici dosyaları temizle (Sıfır İz)
       file:
         path: "{{ item }}"
         state: absent
       loop:
         - /tmp/html.tpl
         - /tmp/{{ inventory_hostname }}_zafiyet.html
-
-- name: 2. Aşama - Raporları Nginx Yayın Dizinine Aktar
-  hosts: rapor_sunucusu
-  gather_facts: no
-  become: yes
-  vars:
-    ansible_become_timeout: 45
-  tasks:
-    - name: Raporları Nginx ana dizinine yaz
-      copy:
-        src: /tmp/merkezi_raporlar/
-        dest: /var/www/html/raporlar/
