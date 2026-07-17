@@ -29,20 +29,15 @@
       when: ansible_os_family == "Debian" and target_packages.stdout_lines | length > 0
       register: apt_patch_results
 
-    - name: (Debian/Ubuntu) Sistemin yeniden başlatmaya ihtiyacı var mı kontrol et
-      command: needrestart -r l  # -r l modu: Sadece gerekliyse yeniden başlatma listesini verir
-      register: reboot_required_check
-      changed_when: false
-      failed_when: false
-      when: ansible_os_family == "Debian" and apt_patch_results.changed
+    - name: (Debian/Ubuntu) Sistemin yeniden başlatmaya ihtiyacı var mı kontrol et (Dosyayı yakala)
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_file_status
+      when: ansible_os_family == "Debian"
 
-    - name: (Debian/Ubuntu) Eğer Kernel veya kritik kütüphane güncellendiyse sistemi yeniden başlat
+    - name: (Debian/Ubuntu) Gerekliyse sistemi yeniden başlat
       reboot:
-        msg: "Güvenlik yamaları (Kernel/Lib) sonrası otomatik sistem yeniden başlatması"
+        msg: "Sistem güncellemeleri veya Kernel değişikliği sonrası yeniden başlatma"
         connect_timeout: 5
         reboot_timeout: 300
-      # Buradaki mantık: apt işlem yaptıysa ve needrestart bir reboot öneriyorsa restart at
-      when: >
-        ansible_os_family == "Debian" and 
-        apt_patch_results.changed and 
-        (reboot_required_check.stdout is search("reboot required") or ansible_local.reboot_required | default(false))
+      when: ansible_os_family == "Debian" and reboot_file_status.stat.exists
