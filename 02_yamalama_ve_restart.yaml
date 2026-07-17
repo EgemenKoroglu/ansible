@@ -1,23 +1,27 @@
 ---
-- name: Profesyonel Ubuntu OS Patching
+- name: Profesyonel Ubuntu Yamalama ve Derin Temizlik
   hosts: hedef_sunucular
   become: yes
   tasks:
-    - name: Paket listesini güncelle ve güvenlik yamalarını uygula
+    - name: Paket listesini güncelle ve en yeni güvenlik yamalarını uygula
       apt:
         update_cache: yes
-        upgrade: dist # Sadece güvenlik ve kritik yamaları yapar
-        autoremove: yes
+        upgrade: dist
       register: apt_update_status
 
-    - name: Reboot gerekip gerekmediğini kontrol et
+    - name: Eski kernel (çekirdek) dosyalarını ve kullanılmayan bağımlılıkları diskten kazı (Autoremove & Purge)
+      apt:
+        autoremove: yes
+        purge: yes
+
+    - name: Kernel değişikliği sebebiyle yeniden başlatma gerekip gerekmediğini kontrol et
       stat:
         path: /var/run/reboot-required
       register: reboot_status
 
-    - name: Sistem reboot gerektiriyorsa yeniden başlat
+    - name: Eğer yeni çekirdek yüklendiyse sistemi yeniden başlat
       reboot:
-        msg: "Güvenlik yamaları sonrası sistem yeniden başlatılıyor."
+        msg: "Güvenlik yamaları ve eski kernel temizliği sonrası otomatik yeniden başlatma."
         connect_timeout: 5
         reboot_timeout: 300
       when: reboot_status.stat.exists
