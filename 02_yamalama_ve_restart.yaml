@@ -1,31 +1,24 @@
 ---
-- name: Job Template 2 - Otomatik Yamalama ve Akıllı Yeniden Başlatma
+- name: Otomatik OS Yamalama
   hosts: hedef_sunucular
   become: yes
   gather_facts: yes
   tasks:
-    - name: Ön Hazırlık - JQ paketini kur (JSON verisini okuyabilmek için şart)
+    - name: Ön Hazırlık - JQ paketini kur
       apt:
         name: jq
         state: present
       when: ansible_os_family == "Debian"
 
-    - name: Güncellenecek zafiyetli paket listesini belirle
+    - name: Güncellenecek zafiyetli OS paket listesini belirle
       shell: |
-        trivy rootfs / --scanners vuln --severity HIGH,CRITICAL --format json -q | \
-        jq -r '.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | .PkgName' | \
+        trivy rootfs / --vuln-type os --scanners vuln --severity HIGH,CRITICAL --format json -q | \
+        jq -r '.Results[]? | select(.Class == "os-pkgs") | .Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | .PkgName' | \
         sort -u
       register: target_packages
       ignore_errors: yes
 
-    - name: Log - Güncellenecek Paketlerin Listesi
-      debug:
-        msg: "Bulunan ve Yamalanacak Paketler: {{ target_packages.stdout_lines | default('Yok') }}"
-
-    # ==========================================
-    # DEBIAN & UBUNTU YAMALAMA VE RESTART
-    # ==========================================
-    - name: (Debian/Ubuntu) Zafiyetli paketleri en güncel (yamalı) sürüme çek
+    - name: (Debian/Ubuntu) Zafiyetli paketleri yamala
       apt:
         name: "{{ target_packages.stdout_lines }}"
         state: latest
@@ -34,48 +27,20 @@
       when: ansible_os_family == "Debian" and target_packages.stdout_lines | length > 0
       register: apt_patch_results
 
-    - name: (Debian/Ubuntu) Güncellenen kütüphaneleri kullanan servisleri yeniden başlat
+    - name: (Debian/Ubuntu) Gerekli servisleri yeniden başlat
       command: needrestart -r a
       when: ansible_os_family == "Debian" and apt_patch_results.changed
       ignore_errors: yes
       
-    - name: (Debian/Ubuntu) Kernel güncellemesi sonrası sistem yeniden başlatma gereksinimini kontrol et
+    - name: (Debian/Ubuntu) Kernel reboot kontrolü
       stat:
         path: /var/run/reboot-required
       register: ubuntu_reboot_status
       when: ansible_os_family == "Debian"
 
-    - name: (Debian/Ubuntu) Gerekliyse sunucuyu tamamen yeniden başlat
+    - name: (Debian/Ubuntu) Sisteme reboot at
       reboot:
-        msg: "Güvenlik yamaları sonrası otomatik sistem yeniden başlatması"
+        msg: "Güvenlik yamaları sonrası otomatik reboot"
         connect_timeout: 5
         reboot_timeout: 300
-        pre_reboot_delay: 0
-        post_reboot_delay: 30
       when: ansible_os_family == "Debian" and ubuntu_reboot_status.stat.exists | default(false)
-
-    # ==========================================
-    # REDHAT, CENTOS & ROCKY YAMALAMA VE RESTART
-    # ==========================================
-    - name: (RedHat/CentOS) Zafiyetli paketleri en güncel (yamalı) sürüme çek
-      yum:
-        name: "{{ target_packages.stdout_lines }}"
-        state: latest
-      when: ansible_os_family == "RedHat" and target_packages.stdout_lines | length > 0
-      register: yum_patch_results
-
-    - name: (RedHat/CentOS) Kernel güncellemesi sonrası sistem yeniden başlatma kontrolü
-      command: needs-restarting -r
-      register: redhat_reboot_status
-      failed_when: false
-      changed_when: redhat_reboot_status.rc == 1
-      when: ansible_os_family == "RedHat" and yum_patch_results.changed
-
-    - name: (RedHat/CentOS) Gerekliyse sunucuyu tamamen yeniden başlat
-      reboot:
-        msg: "Güvenlik yamaları sonrası otomatik sistem yeniden başlatması"
-        connect_timeout: 5
-        reboot_timeout: 300
-        pre_reboot_delay: 0
-        post_reboot_delay: 30
-      when: ansible_os_family == "RedHat" and redhat_reboot_status.rc | default(0) == 1

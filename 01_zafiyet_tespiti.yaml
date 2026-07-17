@@ -1,5 +1,5 @@
 ---
-- name: Trivy Tarama ve Nginx Raporlama (Tek Aşama)
+- name: Trivy OS Taraması ve Nginx Raporlama
   hosts: hedef_sunucular
   gather_facts: no
   become: yes
@@ -12,8 +12,8 @@
         dest: /tmp/html.tpl
         validate_certs: no
 
-    - name: Zafiyetleri tara ve HTML rapor oluştur
-      shell: trivy fs / --scanners vuln --format template --template "@/tmp/html.tpl" -o /tmp/{{ inventory_hostname }}_zafiyet.html
+    - name: Zafiyetleri tara (Sadece OS) ve HTML rapor oluştur
+      shell: trivy rootfs / --vuln-type os --scanners vuln --severity HIGH,CRITICAL --format template --template "@/tmp/html.tpl" -o /tmp/{{ inventory_hostname }}_zafiyet.html
 
     - name: Raporu AWX izole ortamına çek
       fetch:
@@ -26,9 +26,11 @@
         src: /tmp/{{ inventory_hostname }}_zafiyet.html
         dest: /var/www/html/raporlar/{{ inventory_hostname }}_zafiyet.html
       delegate_to: 172.30.11.11
-      become: false
+      become: no
+      vars:
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
 
-    - name: Hedef sunucudaki geçici dosyaları temizle (Sıfır İz)
+    - name: Hedef sunucudaki geçici dosyaları temizle
       file:
         path: "{{ item }}"
         state: absent
