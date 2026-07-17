@@ -25,7 +25,7 @@
       copy:
         src: /tmp/{{ inventory_hostname }}_zafiyet.html
         dest: /var/www/html/raporlar/{{ inventory_hostname }}_zafiyet.html
-      delegate_to: ana_sunucu
+      delegate_to: 172.30.11.11
       become: false
 
     - name: Hedef sunucudaki geçici dosyaları temizle (Sıfır İz)
