@@ -1,43 +1,23 @@
 ---
-- name: Otomatik OS Yamalama ve Kesin Yeniden Başlatma
+- name: Profesyonel Ubuntu OS Patching
   hosts: hedef_sunucular
   become: yes
-  gather_facts: yes
   tasks:
-    - name: Ön Hazırlık - JQ ve Needrestart paketlerini kur
+    - name: Paket listesini güncelle ve güvenlik yamalarını uygula
       apt:
-        name: 
-          - jq
-          - needrestart
-        state: present
-      when: ansible_os_family == "Debian"
-
-    - name: Güncellenecek zafiyetli OS paket listesini belirle
-      shell: |
-        trivy rootfs / --vuln-type os --scanners vuln --severity HIGH,CRITICAL --format json -q | \
-        jq -r '.Results[]? | select(.Class == "os-pkgs") | .Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | .PkgName' | \
-        sort -u
-      register: target_packages
-      ignore_errors: yes
-
-    - name: (Debian/Ubuntu) Zafiyetli paketleri yamala
-      apt:
-        name: "{{ target_packages.stdout_lines }}"
-        state: latest
-        only_upgrade: yes
         update_cache: yes
-      when: ansible_os_family == "Debian" and target_packages.stdout_lines | length > 0
-      register: apt_patch_results
+        upgrade: dist # Sadece güvenlik ve kritik yamaları yapar
+        autoremove: yes
+      register: apt_update_status
 
-    - name: (Debian/Ubuntu) Sistemin yeniden başlatmaya ihtiyacı var mı kontrol et (Dosyayı yakala)
+    - name: Reboot gerekip gerekmediğini kontrol et
       stat:
         path: /var/run/reboot-required
-      register: reboot_file_status
-      when: ansible_os_family == "Debian"
+      register: reboot_status
 
-    - name: (Debian/Ubuntu) Gerekliyse sistemi yeniden başlat
+    - name: Sistem reboot gerektiriyorsa yeniden başlat
       reboot:
-        msg: "Sistem güncellemeleri veya Kernel değişikliği sonrası yeniden başlatma"
+        msg: "Güvenlik yamaları sonrası sistem yeniden başlatılıyor."
         connect_timeout: 5
         reboot_timeout: 300
-      when: ansible_os_family == "Debian" and reboot_file_status.stat.exists
+      when: reboot_status.stat.exists
