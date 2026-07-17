@@ -1,6 +1,6 @@
 ---
 - name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
-  hosts: all
+  hosts: hedef_sunucular
   become: yes
   gather_facts: yes
   tasks:

@@ -1,6 +1,6 @@
 ---
 - name: Job Template 2 - Otomatik Yamalama ve Akıllı Yeniden Başlatma
-  hosts: all
+  hosts: hedef_sunucular
   become: yes
   gather_facts: yes
   tasks:

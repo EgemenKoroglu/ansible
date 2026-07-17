@@ -1,14 +1,37 @@
 ---
-- name: Job Template 1 - Zafiyet Taraması ve Merkezi HTML Raporlama
-  hosts: all
+- name: 1. Aşama - Hedefleri Tara ve Raporları Topla
+  hosts: hedef_sunucular
   become: yes
   tasks:
-    - name: Trivy HTML Raporunu Alt Sunucuda Oluştur
-      shell: trivy fs / --scanners vuln --format template --template "@contrib/html.tpl" -o /tmp/zafiyet_raporu.html
+    - name: Trivy HTML şablonunu hedef sunucuya indir
+      get_url:
+        url: https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+        dest: /tmp/html.tpl
+        validate_certs: no
+
+    - name: Zafiyetleri tara ve HTML rapor oluştur
+      shell: trivy fs / --scanners vuln --format template --template "@/tmp/html.tpl" -o /tmp/{{ inventory_hostname }}_zafiyet.html
       ignore_errors: yes
 
-    - name: Oluşturulan Raporu AWX Ana Sunucusuna Çek (Fetch)
+    - name: Raporu AWX izole ortamına çek
       fetch:
-        src: /tmp/zafiyet_raporu.html
-        dest: /opt/trivy_raporlar/
-        flat: no
+        src: /tmp/{{ inventory_hostname }}_zafiyet.html
+        dest: /tmp/merkezi_raporlar/
+        flat: yes
+
+    - name: Hedef sunucudaki geçici dosyaları temizle
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/html.tpl
+        - /tmp/{{ inventory_hostname }}_zafiyet.html
+
+- name: 2. Aşama - Raporları Nginx Yayın Dizinine Aktar
+  hosts: rapor_sunucusu
+  become: yes
+  tasks:
+    - name: Raporları Nginx ana dizinine yaz
+      copy:
+        src: /tmp/merkezi_raporlar/
+        dest: /var/www/html/raporlar/
