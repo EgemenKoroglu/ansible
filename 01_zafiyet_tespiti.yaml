@@ -1,36 +1,14 @@
 ---
-- name: Job Template 1 - Zafiyet Taraması
+- name: Job Template 1 - Zafiyet Taraması ve Merkezi HTML Raporlama
   hosts: all
   become: yes
   tasks:
-    - name: JSON işlemek için jq aracını kur
-      apt:
-        name: jq
-        state: present
-        update_cache: yes
-
-    - name: Trivy Tarama ve Temiz Metin Raporu Oluşturma
-      shell: |
-        # 1. Tüm zafiyetleri JSON olarak tara ve kaydet
-        trivy fs / --scanners vuln --format json -q > /tmp/trivy.json
-        
-        # 2. Dümdüz, parantezsiz ve tertemiz bir metin raporu inşa et
-        echo "=========================================================" > /tmp/rapor.txt
-        echo "Sunucu: {{ inventory_hostname }}" >> /tmp/rapor.txt
-        
-        # Sadece Yaması Hazır (Kapatılabilir) Açıkları Say
-        TOPLAM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null)] | length' /tmp/trivy.json)
-        echo "Toplam Kapatılabilir (Yaması Hazır) Açık Sayısı: $TOPLAM" >> /tmp/rapor.txt
-        echo "---------------------------------------------------------" >> /tmp/rapor.txt
-        
-        if [ "$TOPLAM" -gt "0" ]; then
-            echo "KRİTİK ve YÜKSEK (CRITICAL/HIGH) Seviye İlk 50 Benzersiz Zafiyet:" >> /tmp/rapor.txt
-            jq -r '[.Results[]?.Vulnerabilities[]? | select((.Severity == "CRITICAL" or .Severity == "HIGH") and .FixedVersion != null)] | unique_by(.VulnerabilityID) | .[] | "[\(.Severity)] \(.VulnerabilityID) | Paket: \(.PkgName) | Sürüm: \(.InstalledVersion) -> \(.FixedVersion)"' /tmp/trivy.json | sort -u | head -n 50 >> /tmp/rapor.txt
-        else
-            echo "Harika! Sistem temiz, acil yama bekleyen paket yok." >> /tmp/rapor.txt
-        fi
-        echo "=========================================================" >> /tmp/rapor.txt
+    - name: Trivy HTML Raporunu Alt Sunucuda Oluştur
+      shell: trivy fs / --scanners vuln --format template --template "@contrib/html.tpl" -o /tmp/zafiyet_raporu.html
       ignore_errors: yes
 
-    - name: Zafiyet Raporunu Görüntüle (Stdout Ekranına Tıkla)
-      command: cat /tmp/rapor.txt
+    - name: Oluşturulan Raporu AWX Ana Sunucusuna Çek (Fetch)
+      fetch:
+        src: /tmp/zafiyet_raporu.html
+        dest: /opt/trivy_raporlar/
+        flat: no
