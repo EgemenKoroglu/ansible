@@ -4,13 +4,23 @@
   become: yes
   gather_facts: yes
   tasks:
+    - name: Ön Hazırlık - JQ paketini kur (JSON verisini okuyabilmek için şart)
+      apt:
+        name: jq
+        state: present
+      when: ansible_os_family == "Debian"
+
     - name: Güncellenecek zafiyetli paket listesini belirle
       shell: |
-        trivy fs / --scanners vuln --format json -q | \
+        trivy rootfs / --scanners vuln --severity HIGH,CRITICAL --format json -q | \
         jq -r '.Results[]?.Vulnerabilities[]? | select(.FixedVersion != null and .FixedVersion != "") | .PkgName' | \
         sort -u
       register: target_packages
       ignore_errors: yes
+
+    - name: Log - Güncellenecek Paketlerin Listesi
+      debug:
+        msg: "Bulunan ve Yamalanacak Paketler: {{ target_packages.stdout_lines | default('Yok') }}"
 
     # ==========================================
     # DEBIAN & UBUNTU YAMALAMA VE RESTART
@@ -27,6 +37,7 @@
     - name: (Debian/Ubuntu) Güncellenen kütüphaneleri kullanan servisleri yeniden başlat
       command: needrestart -r a
       when: ansible_os_family == "Debian" and apt_patch_results.changed
+      ignore_errors: yes
       
     - name: (Debian/Ubuntu) Kernel güncellemesi sonrası sistem yeniden başlatma gereksinimini kontrol et
       stat:
@@ -34,9 +45,9 @@
       register: ubuntu_reboot_status
       when: ansible_os_family == "Debian"
 
-    - name: (Debian/Ubuntu) Gerekliyse sunucuyu (işletim sistemini) tamamen yeniden başlat
+    - name: (Debian/Ubuntu) Gerekliyse sunucuyu tamamen yeniden başlat
       reboot:
-        msg: "Güvenlik yamaları (Kernel/Core) sonrası otomatik sistem yeniden başlatması"
+        msg: "Güvenlik yamaları sonrası otomatik sistem yeniden başlatması"
         connect_timeout: 5
         reboot_timeout: 300
         pre_reboot_delay: 0
@@ -53,16 +64,16 @@
       when: ansible_os_family == "RedHat" and target_packages.stdout_lines | length > 0
       register: yum_patch_results
 
-    - name: (RedHat/CentOS) Kernel güncellemesi sonrası sistem yeniden başlatma gereksinimini kontrol et
+    - name: (RedHat/CentOS) Kernel güncellemesi sonrası sistem yeniden başlatma kontrolü
       command: needs-restarting -r
       register: redhat_reboot_status
       failed_when: false
       changed_when: redhat_reboot_status.rc == 1
       when: ansible_os_family == "RedHat" and yum_patch_results.changed
 
-    - name: (RedHat/CentOS) Gerekliyse sunucuyu (işletim sistemini) tamamen yeniden başlat
+    - name: (RedHat/CentOS) Gerekliyse sunucuyu tamamen yeniden başlat
       reboot:
-        msg: "Güvenlik yamaları sonrası otomatik sistem yeniden başlatması (CentOS/RedHat)"
+        msg: "Güvenlik yamaları sonrası otomatik sistem yeniden başlatması"
         connect_timeout: 5
         reboot_timeout: 300
         pre_reboot_delay: 0
