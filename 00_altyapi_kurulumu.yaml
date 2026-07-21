@@ -7,7 +7,7 @@
     # ==========================================
     # DEBIAN & UBUNTU AİLESİ
     # ==========================================
-    - name: (Debian/Ubuntu) Temel bağımlılıkları kur
+    - name: (Debian/Ubuntu) Temel bağımlılıkları ve OpenSCAP'i kur
       apt:
         name:
           - wget
@@ -15,26 +15,7 @@
           - gnupg
           - jq
           - needrestart
-        state: present
-        update_cache: yes
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) Trivy GPG anahtarını ekle
-      apt_key:
-        url: https://aquasecurity.github.io/trivy-repo/deb/public.key
-        state: present
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) Dinamik Trivy reposunu ekle
-      apt_repository:
-        repo: "deb https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
-        state: present
-        filename: trivy
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) Trivy'yi kur
-      apt:
-        name: trivy
+          - "libopenscap*" # Trivy yerine OpenSCAP'in doğru sürümünü otomatik kurar
         state: present
         update_cache: yes
       when: ansible_os_family == "Debian"
@@ -42,26 +23,12 @@
     # ==========================================
     # REDHAT, CENTOS & ROCKY AİLESİ
     # ==========================================
-    - name: (RedHat/CentOS) Temel bağımlılıkları kur
+    - name: (RedHat/CentOS) Temel bağımlılıkları ve OpenSCAP'i kur
       yum:
         name:
           - wget
           - jq
           - yum-utils
-        state: present
-      when: ansible_os_family == "RedHat"
-
-    - name: (RedHat/CentOS) Trivy reposunu ekle
-      yum_repository:
-        name: trivy
-        description: Trivy Repository
-        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$releasever/$basearch/
-        enabled: yes
-        gpgcheck: no
-      when: ansible_os_family == "RedHat"
-
-    - name: (RedHat/CentOS) Trivy'yi kur
-      yum:
-        name: trivy
+          - openscap-scanner # RedHat tabanlı sistemler için OpenSCAP paketi
         state: present
       when: ansible_os_family == "RedHat"

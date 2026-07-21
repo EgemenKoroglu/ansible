@@ -1,27 +1,30 @@
 ---
-- name: Profesyonel Ubuntu Yamalama ve Derin Temizlik
+- name: Job Template 2 - Profesyonel Ubuntu Yamalama ve Derin Temizlik
   hosts: hedef_sunucular
   become: yes
   tasks:
-    - name: Paket listesini güncelle ve en yeni güvenlik yamalarını uygula
+    - name: (Debian/Ubuntu) Paket listesini güncelle ve en yeni güvenlik yamalarını uygula
       apt:
         update_cache: yes
         upgrade: dist
       register: apt_update_status
+      when: ansible_os_family == "Debian"
 
-    - name: Eski kernel (çekirdek) dosyalarını ve kullanılmayan bağımlılıkları diskten kazı (Autoremove & Purge)
+    - name: (Debian/Ubuntu) Eski kernel (çekirdek) dosyalarını ve kullanılmayan bağımlılıkları diskten kazı
       apt:
         autoremove: yes
         purge: yes
+      when: ansible_os_family == "Debian"
 
-    - name: Kernel değişikliği sebebiyle yeniden başlatma gerekip gerekmediğini kontrol et
+    - name: (Debian/Ubuntu) Kernel değişikliği sebebiyle yeniden başlatma gerekip gerekmediğini kontrol et
       stat:
         path: /var/run/reboot-required
       register: reboot_status
+      when: ansible_os_family == "Debian"
 
-    - name: Eğer yeni çekirdek yüklendiyse sistemi yeniden başlat
+    - name: (Debian/Ubuntu) Eğer yeni çekirdek yüklendiyse sistemi yeniden başlat
       reboot:
         msg: "Güvenlik yamaları ve eski kernel temizliği sonrası otomatik yeniden başlatma."
         connect_timeout: 5
         reboot_timeout: 300
-      when: reboot_status.stat.exists
+      when: ansible_os_family == "Debian" and reboot_status.stat.exists

@@ -1,25 +1,33 @@
 ---
-- name: OpenSCAP Akıllı Zafiyet Taraması ve Nginx Raporlama
+- name: Job Template 1 - OpenSCAP Akıllı Zafiyet Taraması ve Nginx Raporlama
   hosts: hedef_sunucular
   become: yes
+  gather_facts: yes
   tasks:
-    - name: OpenSCAP aracını sunucuya kur
-      apt:
-        name: libopenscap8
-        state: present
-
-    - name: Ubuntu'nun günlük resmi OVAL (Zafiyet Veritabanı) dosyasını indir
+    - name: (Debian/Ubuntu) Resmi OVAL (Zafiyet Veritabanı) dosyasını indir
       get_url:
         url: "https://security-metadata.canonical.com/oval/com.ubuntu.{{ ansible_distribution_release }}.cve.oval.xml"
         dest: /tmp/ubuntu_cve.xml
+      when: ansible_os_family == "Debian"
 
-    - name: Canlı sistemi tara ve HTML rapor oluştur (Sadece aktif çalışanlar)
+    - name: (Debian/Ubuntu) Canlı sistemi tara ve HTML rapor oluştur (Sadece aktif çalışanlar)
       shell: oscap oval eval --report /tmp/{{ inventory_hostname }}_scap_raporu.html /tmp/ubuntu_cve.xml
-      ignore_errors: yes # OpenSCAP açık bulduğunda hata kodu döner, süreci kesmemesi için ekliyoruz
+      ignore_errors: yes
+      when: ansible_os_family == "Debian"
 
-    - name: Raporu AWX üzerinden Nginx yayın dizinine fırlat
+    - name: (Debian/Ubuntu) Raporu AWX izole ortamına çek (Fetch Köprüsü)
+      fetch:
+        src: /tmp/{{ inventory_hostname }}_scap_raporu.html
+        dest: /tmp/{{ inventory_hostname }}_scap_raporu.html
+        flat: yes
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Çekilen raporu anında Nginx yayın dizinine fırlat
       copy:
         src: /tmp/{{ inventory_hostname }}_scap_raporu.html
         dest: /var/www/html/raporlar/{{ inventory_hostname }}_scap_raporu.html
       delegate_to: 172.30.11.11
       become: no
+      vars:
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+      when: ansible_os_family == "Debian"
