@@ -1,8 +1,4 @@
 # Güncellenmiş Job 0 - OpenSCAP Kurulumu
-
-Bu playbook, Ubuntu 22.04 ve 24.04 sürümleri arasındaki paket adı değişikliklerini (libopenscap8 vs openscap-scanner) otomatik olarak algılar ve eksik olan `universe` deposunu ekleyerek "no package matching" hatasını kökünden çözer.
-
-```yaml
 ---
 - name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
   hosts: hedef_sunucular
