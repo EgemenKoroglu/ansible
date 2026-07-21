@@ -10,22 +10,22 @@
         dest: /tmp/ubuntu_cve.xml
       when: ansible_os_family == "Debian"
 
-    - name: (Debian/Ubuntu) Canlı sistemi tara ve HTML rapor oluştur (Sadece aktif çalışanlar)
-      shell: oscap oval eval --report /tmp/{{ inventory_hostname }}_scap_raporu.html /tmp/ubuntu_cve.xml
+    - name: (Debian/Ubuntu) Canlı sistemi tara ve HTML rapor oluştur
+      shell: oscap oval eval --report /tmp/{{ inventory_hostname }}.html /tmp/ubuntu_cve.xml
       ignore_errors: yes
       when: ansible_os_family == "Debian"
 
     - name: (Debian/Ubuntu) Raporu AWX izole ortamına çek (Fetch Köprüsü)
       fetch:
-        src: /tmp/{{ inventory_hostname }}_scap_raporu.html
-        dest: /tmp/{{ inventory_hostname }}_scap_raporu.html
+        src: /tmp/{{ inventory_hostname }}.html
+        dest: /tmp/{{ inventory_hostname }}.html
         flat: yes
       when: ansible_os_family == "Debian"
 
     - name: (Debian/Ubuntu) Çekilen raporu anında Nginx yayın dizinine fırlat
       copy:
-        src: /tmp/{{ inventory_hostname }}_scap_raporu.html
-        dest: /var/www/html/raporlar/{{ inventory_hostname }}_scap_raporu.html
+        src: /tmp/{{ inventory_hostname }}.html
+        dest: /var/www/html/raporlar/{{ inventory_hostname }}.html
       delegate_to: 172.30.11.11
       become: no
       vars:

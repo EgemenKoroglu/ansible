@@ -15,8 +15,7 @@
           - gnupg
           - jq
           - needrestart
-          - openscap-scanner # oscap terminal aracını getiren asıl paket!
-          - openscap-utils
+          - openscap-scanner # oscap terminal aracını getiren asıl ve tek paket!
         state: present
         update_cache: yes
       when: ansible_os_family == "Debian"
