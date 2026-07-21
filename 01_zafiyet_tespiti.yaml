@@ -5,8 +5,18 @@
   gather_facts: yes
   tasks:
     # ==========================================
-    # 1. ORTAK BAĞIMLILIKLAR (İsimleri asla değişmez)
+    # DEBIAN & UBUNTU AİLESİ
     # ==========================================
+    - name: (Debian/Ubuntu) Universe reposunu zorla aç (Paketler burada gizli)
+      command: add-apt-repository universe -y
+      ignore_errors: yes
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Paket listelerini güncelle
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
     - name: (Debian/Ubuntu) İsimleri sabit olan temel paketleri kur
       apt:
         name:
@@ -16,33 +26,16 @@
           - jq
           - needrestart
         state: present
-        update_cache: yes
       when: ansible_os_family == "Debian"
 
-    # ==========================================
-    # 2. AKILLI OPENSCAP KURULUMU (Sorunu Çözen Kısım)
-    # ==========================================
-    - name: (Debian/Ubuntu) İşletim sistemine sorarak doğru OpenSCAP paketini zorla kur
-      shell: |
-        if apt-cache show openscap-scanner > /dev/null 2>&1; then
-          echo "openscap-scanner paketi depoda bulundu, sisteme kuruluyor..."
-          apt-get install -y openscap-scanner
-        elif apt-cache show libopenscap8 > /dev/null 2>&1; then
-          echo "libopenscap8 paketi depoda bulundu, sisteme kuruluyor..."
-          apt-get install -y libopenscap8
-        else
-          echo "HATA: Hiçbir OpenSCAP paketi bulunamadı! Sunucunun internet/depo erişimini kontrol edin."
-          exit 1
-        fi
-      args:
-        executable: /bin/bash
-      register: oscap_kurulum_sonucu
-      changed_when: "'kuruluyor' in oscap_kurulum_sonucu.stdout"
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) Hangi Paketin Kurulduğunu AWX Ekranına Bas
-      debug:
-        msg: "{{ oscap_kurulum_sonucu.stdout }}"
+    - name: (Debian/Ubuntu) İnatçı OpenSCAP paketlerini kaba kuvvetle dene (Olmayanı atla!)
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - libopenscap8       # 22.04 bunu kurup diğerini atlayacak
+        - openscap-scanner   # 24.04 bunu kurup diğerini atlayacak
+      ignore_errors: yes
       when: ansible_os_family == "Debian"
 
     # ==========================================
