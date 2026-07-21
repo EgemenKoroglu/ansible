@@ -2,33 +2,11 @@
 - name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
   hosts: hedef_sunucular
   become: yes
-  gather_facts: yes
   tasks:
-    # ==========================================
-    # DEBIAN & UBUNTU AİLESİ
-    # ==========================================
-    - name: (Debian/Ubuntu) Temel bağımlılıkları ve OpenSCAP aracını kur
-      apt:
-        name:
-          - wget
-          - apt-transport-https
-          - gnupg
-          - jq
-          - needrestart
-          - openscap-scanner # oscap terminal aracını getiren asıl ve tek paket!
-        state: present
-        update_cache: yes
+    - name: (Debian/Ubuntu) Paket yoksa HİÇBİR ŞEKİLDE hata vermeyen sessiz kurulum
+      shell: |
+        apt-get install -y openscap-scanner > /dev/null 2>&1 || true
+        apt-get install -y libopenscap8 > /dev/null 2>&1 || true
+      args:
+        executable: /bin/bash
       when: ansible_os_family == "Debian"
-
-    # ==========================================
-    # REDHAT, CENTOS & ROCKY AİLESİ
-    # ==========================================
-    - name: (RedHat/CentOS) Temel bağımlılıkları ve OpenSCAP'i kur
-      yum:
-        name:
-          - wget
-          - jq
-          - yum-utils
-          - openscap-scanner
-        state: present
-      when: ansible_os_family == "RedHat"

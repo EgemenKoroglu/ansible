@@ -1,12 +1,33 @@
 ---
-- name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
+- name: Job Template 1 - OpenSCAP Akıllı Zafiyet Taraması ve Nginx Raporlama
   hosts: hedef_sunucular
   become: yes
+  gather_facts: yes
   tasks:
-    - name: (Debian/Ubuntu) Paket yoksa HİÇBİR ŞEKİLDE hata vermeyen sessiz kurulum
-      shell: |
-        apt-get install -y openscap-scanner > /dev/null 2>&1 || true
-        apt-get install -y libopenscap8 > /dev/null 2>&1 || true
-      args:
-        executable: /bin/bash
+    - name: (Debian/Ubuntu) Resmi OVAL (Zafiyet Veritabanı) dosyasını indir
+      get_url:
+        url: "https://security-metadata.canonical.com/oval/com.ubuntu.{{ ansible_distribution_release }}.cve.oval.xml"
+        dest: /tmp/ubuntu_cve.xml
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Canlı sistemi tara ve HTML rapor oluştur
+      shell: oscap oval eval --report /tmp/{{ inventory_hostname }}.html /tmp/ubuntu_cve.xml
+      ignore_errors: yes
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Raporu AWX izole ortamına çek (Fetch Köprüsü)
+      fetch:
+        src: /tmp/{{ inventory_hostname }}.html
+        dest: /tmp/{{ inventory_hostname }}.html
+        flat: yes
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Çekilen raporu anında Nginx yayın dizinine fırlat
+      copy:
+        src: /tmp/{{ inventory_hostname }}.html
+        dest: /var/www/html/raporlar/{{ inventory_hostname }}.html
+      delegate_to: 172.30.11.11
+      become: no
+      vars:
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
       when: ansible_os_family == "Debian"
