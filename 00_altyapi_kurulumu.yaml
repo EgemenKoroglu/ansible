@@ -15,7 +15,9 @@
           - gnupg
           - jq
           - needrestart
-          - "libopenscap*" # Trivy yerine OpenSCAP'in doğru sürümünü otomatik kurar
+          - libopenscap8
+          - openscap-utils      # oscap terminal aracı bu pakettedir
+          - openscap-scanner    # Tarayıcı motoru eklentisi
         state: present
         update_cache: yes
       when: ansible_os_family == "Debian"
