@@ -34,13 +34,13 @@
         state: present
       when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
 
-    - name: (Ubuntu 24.04) Yeni sürüm OpenSCAP paketlerini kur
+    - name: (Ubuntu 22.04) Eski sürüm OpenSCAP paketlerini kur
       apt:
         name:
-          - openscap-scanner
+          - libopenscap8
         state: present
-      when: ansible_os_family == "Debian" and ansible_distribution_version == "24.04"
-
+      when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
+      
     # ==========================================
     # REDHAT, CENTOS & ROCKY AİLESİ
     # ==========================================
