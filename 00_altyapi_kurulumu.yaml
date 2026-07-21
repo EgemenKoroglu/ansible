@@ -1,4 +1,3 @@
-# Güncellenmiş Job 0 - OpenSCAP Kurulumu
 ---
 - name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
   hosts: hedef_sunucular
@@ -6,15 +5,9 @@
   gather_facts: yes
   tasks:
     # ==========================================
-    # DEBIAN & UBUNTU AİLESİ (22.04 ve 24.04 Destekli)
+    # DEBIAN & UBUNTU AİLESİ
     # ==========================================
-    - name: (Debian/Ubuntu) Universe repository'sini aktif et (OpenSCAP bu depodadır)
-      apt_repository:
-        repo: "deb http://archive.ubuntu.com/ubuntu/ {{ ansible_distribution_release }} universe"
-        state: present
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) Ortak temel bağımlılıkları kur
+    - name: (Debian/Ubuntu) Temel bağımlılıkları ve OpenSCAP aracını kur
       apt:
         name:
           - wget
@@ -22,25 +15,12 @@
           - gnupg
           - jq
           - needrestart
+          - openscap-scanner # oscap terminal aracını getiren asıl paket!
+          - openscap-utils
         state: present
         update_cache: yes
       when: ansible_os_family == "Debian"
 
-    - name: (Ubuntu 22.04) Eski sürüm OpenSCAP paketlerini kur
-      apt:
-        name:
-          - libopenscap8
-          - openscap-utils
-        state: present
-      when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
-
-    - name: (Ubuntu 22.04) Eski sürüm OpenSCAP paketlerini kur
-      apt:
-        name:
-          - libopenscap8
-        state: present
-      when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
-      
     # ==========================================
     # REDHAT, CENTOS & ROCKY AİLESİ
     # ==========================================
