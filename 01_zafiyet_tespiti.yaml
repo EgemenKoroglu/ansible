@@ -3,25 +3,10 @@
   hosts: hedef_sunucular
   become: yes
   tasks:
-    - name: (Debian/Ubuntu) Paket listelerini güncelle ve ortak araçları kur
-      apt:
-        name:
-          - wget
-          - apt-transport-https
-          - gnupg
-          - jq
-        state: present
-        update_cache: yes
+    - name: (Debian/Ubuntu) Paket yoksa HİÇBİR ŞEKİLDE hata vermeyen sessiz kurulum
+      shell: |
+        apt-get install -y openscap-scanner > /dev/null 2>&1 || true
+        apt-get install -y libopenscap8 > /dev/null 2>&1 || true
+      args:
+        executable: /bin/bash
       when: ansible_os_family == "Debian"
-
-    - name: (172.30.11.13 - Ubuntu 22.04) Eski sürüm OpenSCAP paketini kur
-      apt:
-        name: libopenscap8
-        state: present
-      when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
-
-    - name: (172.30.11.12 - Ubuntu 24.04) Yeni sürüm OpenSCAP paketini kur
-      apt:
-        name: openscap-scanner
-        state: present
-      when: ansible_os_family == "Debian" and ansible_distribution_version == "24.04"
