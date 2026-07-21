@@ -5,19 +5,9 @@
   gather_facts: yes
   tasks:
     # ==========================================
-    # DEBIAN & UBUNTU AİLESİ
+    # 1. TEMEL BAĞIMLILIKLAR
     # ==========================================
-    - name: (Debian/Ubuntu) Universe reposunu zorla aç (Paketler burada gizli)
-      command: add-apt-repository universe -y
-      ignore_errors: yes
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) Paket listelerini güncelle
-      apt:
-        update_cache: yes
-      when: ansible_os_family == "Debian"
-
-    - name: (Debian/Ubuntu) İsimleri sabit olan temel paketleri kur
+    - name: (Debian/Ubuntu) İsimleri asla değişmeyen ortak paketleri kur
       apt:
         name:
           - wget
@@ -26,16 +16,34 @@
           - jq
           - needrestart
         state: present
+        update_cache: yes
       when: ansible_os_family == "Debian"
 
-    - name: (Debian/Ubuntu) İnatçı OpenSCAP paketlerini kaba kuvvetle dene (Olmayanı atla!)
-      apt:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - libopenscap8       # 22.04 bunu kurup diğerini atlayacak
-        - openscap-scanner   # 24.04 bunu kurup diğerini atlayacak
-      ignore_errors: yes
+    # ==========================================
+    # 2. BASH İLE SESSİZ VE KESİN OPENSCAP KURULUMU
+    # ==========================================
+    - name: (Debian/Ubuntu) OpenSCAP'i terminal üzerinden kaba kuvvetle kur
+      shell: |
+        # Tüm olası OpenSCAP paket isimlerini sessizce dene
+        for pkg in openscap-scanner libopenscap8 openscap-utils; do
+          apt-get install -y $pkg >/dev/null 2>&1 || true
+        done
+      args:
+        executable: /bin/bash
+      when: ansible_os_family == "Debian"
+
+    # ==========================================
+    # 3. KURULUM KANITI (SAĞLAMA)
+    # ==========================================
+    - name: (Debian/Ubuntu) oscap aracının kurulduğunu doğrula
+      command: oscap --version
+      register: oscap_check
+      changed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Kurulum Sonucunu Ekrana Bas
+      debug:
+        msg: "Başarılı! Kurulan OpenSCAP Versiyonu: {{ oscap_check.stdout_lines[0] }}"
       when: ansible_os_family == "Debian"
 
     # ==========================================
