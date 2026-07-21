@@ -1,3 +1,8 @@
+# Güncellenmiş Job 0 - OpenSCAP Kurulumu
+
+Bu playbook, Ubuntu 22.04 ve 24.04 sürümleri arasındaki paket adı değişikliklerini (libopenscap8 vs openscap-scanner) otomatik olarak algılar ve eksik olan `universe` deposunu ekleyerek "no package matching" hatasını kökünden çözer.
+
+```yaml
 ---
 - name: Job Template 0 - Altyapı ve Bağımlılıkların Kurulumu
   hosts: hedef_sunucular
@@ -5,9 +10,15 @@
   gather_facts: yes
   tasks:
     # ==========================================
-    # DEBIAN & UBUNTU AİLESİ
+    # DEBIAN & UBUNTU AİLESİ (22.04 ve 24.04 Destekli)
     # ==========================================
-    - name: (Debian/Ubuntu) Temel bağımlılıkları ve OpenSCAP'i kur
+    - name: (Debian/Ubuntu) Universe repository'sini aktif et (OpenSCAP bu depodadır)
+      apt_repository:
+        repo: "deb http://archive.ubuntu.com/ubuntu/ {{ ansible_distribution_release }} universe"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) Ortak temel bağımlılıkları kur
       apt:
         name:
           - wget
@@ -15,12 +26,24 @@
           - gnupg
           - jq
           - needrestart
-          - libopenscap8
-          - openscap-utils      # oscap terminal aracı bu pakettedir
-          - openscap-scanner    # Tarayıcı motoru eklentisi
         state: present
         update_cache: yes
       when: ansible_os_family == "Debian"
+
+    - name: (Ubuntu 22.04) Eski sürüm OpenSCAP paketlerini kur
+      apt:
+        name:
+          - libopenscap8
+          - openscap-utils
+        state: present
+      when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
+
+    - name: (Ubuntu 24.04) Yeni sürüm OpenSCAP paketlerini kur
+      apt:
+        name:
+          - openscap-scanner
+        state: present
+      when: ansible_os_family == "Debian" and ansible_distribution_version == "24.04"
 
     # ==========================================
     # REDHAT, CENTOS & ROCKY AİLESİ
@@ -31,6 +54,6 @@
           - wget
           - jq
           - yum-utils
-          - openscap-scanner # RedHat tabanlı sistemler için OpenSCAP paketi
+          - openscap-scanner
         state: present
       when: ansible_os_family == "RedHat"
