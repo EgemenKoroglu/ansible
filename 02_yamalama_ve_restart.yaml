@@ -1,16 +1,58 @@
 ---
-- name: Job Template 2 - Profesyonel Ubuntu Yamalama ve Derin Temizlik
+- name: Job Template 2 - Profesyonel Yamalama, Snap ve Derin Temizlik
   hosts: hedef_sunucular
   become: yes
   tasks:
+    # ==========================================
+    # 1. NELER GÜNCELLENECEK ÖNCEDEN GÖRELİM
+    # ==========================================
+    - name: (Debian/Ubuntu) Güncellenmeyi bekleyen APT paketlerini bul
+      command: apt list --upgradable
+      register: upgradable_packages
+      changed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) AWX Ekranına Güncellenecek Paketleri Bas
+      debug:
+        msg: |
+          =============================================
+          AŞAĞIDAKİ APT PAKETLERİ GÜNCELLENİYOR:
+          =============================================
+          {{ upgradable_packages.stdout_lines | default(['Güncellenecek paket yok.']) | join('\n') }}
+      when: ansible_os_family == "Debian"
+
+    # ==========================================
+    # 2. APT GÜNCELLEMESİ (Asıl İşlem)
+    # ==========================================
     - name: (Debian/Ubuntu) Paket listesini güncelle ve en yeni güvenlik yamalarını uygula
       apt:
         update_cache: yes
         upgrade: dist
-      register: apt_update_status
       when: ansible_os_family == "Debian"
 
-    - name: (Debian/Ubuntu) Eski kernel (çekirdek) dosyalarını ve kullanılmayan bağımlılıkları diskten kazı
+    # ==========================================
+    # 3. GİZLİ SNAP PAKETLERİNE AYAR ÇEKELİM
+    # ==========================================
+    - name: (Debian/Ubuntu) Gizli Snap paketlerini zorla güncelle
+      command: snap refresh
+      register: snap_status
+      changed_when: "'All snaps up to date' not in snap_status.stdout"
+      ignore_errors: yes
+      when: ansible_os_family == "Debian"
+
+    - name: (Debian/Ubuntu) AWX Ekranına Snap Güncelleme Sonucunu Bas
+      debug:
+        msg: |
+          =============================================
+          SNAP GÜNCELLEME DURUMU:
+          =============================================
+          {{ snap_status.stdout_lines | default(['Değişiklik yok']) | join('\n') }}
+      when: ansible_os_family == "Debian"
+
+    # ==========================================
+    # 4. TEMİZLİK VE YENİDEN BAŞLATMA
+    # ==========================================
+    - name: (Debian/Ubuntu) Eski kernel dosyalarını ve kullanılmayan bağımlılıkları diskten kazı
       apt:
         autoremove: yes
         purge: yes
